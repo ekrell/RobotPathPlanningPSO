@@ -26,8 +26,8 @@ Option | Name       | Description                 |
 -n     | waypoints  | number of waypoints in path |
 
 #### Example
-  pathplanning -m sample_map.txt -a 100 -b 100 \
-   -c 25 -d 44 -e 70 -f 67 -n 5
+        pathplanning -m sample_map.txt -a 100 -b 100 \
+            -c 25 -d 44 -e 70 -f 67 -n 5
 
 #### Remote Call Script (execPSO.sh)
 When doing this project, MATLAB was used on a Windows machine, but this C code was written on Linux. The executable was hosted
