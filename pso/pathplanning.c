@@ -124,7 +124,8 @@ int line2 (int x0, int y0, int x1, int y1, int ** map, int xLimit, int yLimit) {
 // Source: https://github.com/ssloy/tinyrenderer/wiki/Lesson-1:-Bresenham%E2%80%99s-Line-Drawing-Algorithm
 
     int count = 0;
-	for (float t=0.; t<1.; t+=.01) { 
+    float t = 0.0;
+	for (t=0.; t<1.; t+=.01) { 
         int x = x0*(1.-t) + x1*t; 
         int y = y0*(1.-t) + y1*t; 
 
@@ -349,8 +350,8 @@ int main (int argc, char **argv){
     settings.dim = waypoints * 2;
 //settings.nhood_size = 10;
 //settings.w_strategy = PSO_W_LIN_DEC;
-    settings.steps = 2500;
-    settings.print_every = 100;
+    settings.steps = 100000;
+    settings.print_every = 10;
     // Init global best solution
     pso_result_t solution;
     // Allocate mem for best position buffer
@@ -366,6 +367,13 @@ int main (int argc, char **argv){
         count = count + 2;
     }
     printf("Solution distance: %f\n", solution.error);
+
+
+    int obstacles = pso_path_countObstructions(solution.gbest, settings.dim, pso_params);
+    printf ("obstacles: %d\n", obstacles);
+
+	
+
     // Free global best buffer
     free(solution.gbest);
 

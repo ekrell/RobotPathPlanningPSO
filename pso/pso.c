@@ -252,7 +252,7 @@ void pso_set_default_settings(pso_settings_t *settings) {
   settings->limits = pso_autofill_limits (settings->x_lo, settings->x_hi, settings->dim);
 
   settings->size = pso_calc_swarm_size(settings->dim);
-  settings->print_every = 1000;
+  settings->print_every = 10;
   settings->steps = 100000;
   settings->c1 = 1.496;
   settings->c2 = 1.496;
@@ -357,16 +357,18 @@ void pso_solve(pso_obj_fun_t obj_fun, void *obj_fun_params,
      b = settings->x_lo + (settings->x_hi - settings->x_lo) *	\
         gsl_rng_uniform(settings->rng);
 */
-      a = settings->limits[0][i] + (settings->limits[1][i] - settings->limits[0][i]) * \
+     //a = settings->limits[0][i] + (settings->limits[1][i] - settings->limits[0][i]) * \
         gsl_rng_uniform(settings->rng);
-      b = settings->limits[0][i] + (settings->limits[1][i] - settings->limits[0][i]) *	\
+      //b = settings->limits[0][i] + (settings->limits[1][i] - settings->limits[0][i]) *	\
         gsl_rng_uniform(settings->rng);
 
+      a = gsl_rng_uniform_int (settings->rng, settings->limits[1][i]);
+      b = gsl_rng_uniform_int (settings->rng, settings->limits[1][i]);
 
-      if (settings->numset == INTEGER){
-          a = roundNum (a);
-          b = roundNum (b);
-      }
+      //if (settings->numset == INTEGER){
+      //    a = roundNum (a);
+      //    b = roundNum (b);
+      //}
       // initialize position
       pos[i][d] = a;
       // best position is the same
@@ -420,9 +422,11 @@ void pso_solve(pso_obj_fun_t obj_fun, void *obj_fun_params,
       // for each dimension
       for (d=0; d<settings->dim; d++) {
         // calculate stochastic coefficients
+	 
         rho1 = settings->c1 * gsl_rng_uniform(settings->rng);
         rho2 = settings->c2 * gsl_rng_uniform(settings->rng);
-        // update velocity
+        
+	// update velocity
         vel[i][d] = w * vel[i][d] +	\
           rho1 * (pos_b[i][d] - pos[i][d]) +	\
           rho2 * (pos_nb[i][d] - pos[i][d]);
