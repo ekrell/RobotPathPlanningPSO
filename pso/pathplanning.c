@@ -31,6 +31,13 @@ typedef struct {
 typedef struct {
     double start[2];
     double stop[2];
+    double c1;
+    double c2;
+    int w_strategy;
+    double w_min;
+    double w_max;
+    int nhood_topology;
+    double nhood_size;
     env_t * env;
 } pso_params_t;
 
@@ -217,7 +224,8 @@ double pso_path(double *vec, int dim, void *params) {
     return distance;
 }
 
-void pso_set_path_settings(pso_settings_t *settings, env_t *env, robot_t *robot, int waypoints) {
+void pso_set_path_settings(pso_settings_t *settings, 
+        pso_params_t *params, env_t *env, robot_t *robot, int waypoints) {
     /* WARNING */
     // Only valid if a square environment with same start and stop 
     // EX: (0, 0) to (100, 100) because the pso lib
@@ -244,8 +252,42 @@ void pso_set_path_settings(pso_settings_t *settings, env_t *env, robot_t *robot,
 
     pso_print_limits(settings->limits, settings->dim);
 
+    // Set parameters, if not default
+    if (params->c1 >= 0)
+        settings->c1 = params->c1;
+    if (params->c2 >= 0)
+        settings->c2 = params->c2;
+    if (params->w_min >= 0)
+        settings->w_min = params->w_min;
+    if (params->w_max >= 0)
+        settings->w_max = params->w_max;
+    if (params->w_strategy >= 0)
+        settings->w_strategy = params->w_strategy;
+    if (params->nhood_size >= 0)
+        settings->nhood_size = params->nhood_size;
+    if (params->nhood_topology >= 0)
+        settings->nhood_strategy = params->nhood_topology;
+
     settings->goal = 1e-5;
     settings->numset = INTEGER;
+}
+
+int getPSOParam_w_stategy(int code){
+    if (code == 0)
+        return PSO_W_CONST;
+    if (code == 1)
+        return PSO_W_LIN_DEC;
+    return code;
+}
+
+int getPSOParam_nhood_topology(int code){
+    if (code == 0)
+        return PSO_NHOOD_GLOBAL;
+    if (code == 1)
+        return PSO_NHOOD_RING;
+    if (code == 2)
+        return PSO_NHOOD_RANDOM;
+    return code;
 }
 
 int main (int argc, char **argv){
@@ -265,9 +307,19 @@ int main (int argc, char **argv){
     //char inFileHandle[20] = "maps/sampleMap4.dat\0";
     char inFileHandle[] = "OccupancyMap.txt";
     int waypoints = 5;
+    /* End nasty hard coded segment */
 
-        /* End nasty hard coded segment */
+    /* PSO parameters */
+    double pso_c1 = -1.0;
+    double pso_c2 = -1.0;
+    double pso_w_max = -1.0;
+    double pso_w_min = -1.0;
+    int pso_w_strategy_select = -1;
+    int pso_nhood_size = -1;
+    int pso_nhood_topology_select = -1;
 
+    int pso_w_strategy = -1;
+    int pso_nhood_topology = -1;
 
     /* Option parsing */
     int verbose = 0;
@@ -276,7 +328,7 @@ int main (int argc, char **argv){
     int c;
     opterr = 0;
 
-    while ((c = getopt (argc, argv, "a:b:c:d:e:f:n:m:v")) != -1)
+    while ((c = getopt (argc, argv, "a:b:c:d:e:f:n:m:p:q:r:s:t:w:x:v")) != -1)
         switch (c) {
             case 'v':
                 verbose = 1;
@@ -305,14 +357,45 @@ int main (int argc, char **argv){
             case 'm':
                 inFileHandlePtr = optarg;
                 break;
+            case 'p': /* PSO c1 */
+                sscanf(optarg, "%lf", &pso_c1);
+                break;
+            case 'q': /* PSO c2 */
+                sscanf(optarg, "%lf", &pso_c2);
+                break;
+            case 'r': /* PSO w_max */
+                sscanf(optarg, "%lf", &pso_w_max);
+                break;
+            case 's': /* PSO w_min */
+                sscanf(optarg, "%lf", &pso_w_min);
+                break;
+            case 't': /* PSO w_strategy */
+                sscanf(optarg, "%d", &pso_w_strategy_select);
+                break;
+            case 'w': /* PSO nhood_strategy */
+                sscanf(optarg, "%d", &pso_nhood_topology_select);
+                break;
+            case 'x': /* PSO nhood_size */
+                sscanf(optarg, "%d", &pso_nhood_size);
+                break;
             default:
                 abort();
         }
-    
+
+    // PSO options from user selection
+    pso_w_strategy     = getPSOParam_w_stategy(pso_w_strategy_select);
+    pso_nhood_topology = getPSOParam_nhood_topology(pso_nhood_topology_select);
+
     // Print argument options
     printf ("Dimension = (%f,%f), Start = (%f,%f), Target = (%f,%f)\n", 
             inHorizonX, inHorizonY, inStartX, inStartY, inEndX, inEndY);
     printf ("Map File = %s\n", inFileHandlePtr);
+    printf ("PSO: c1 = %f, c2 = %f, weight strategy = %d, neighborhood topology = %d\n", 
+            pso_c1, pso_c2, pso_w_strategy, pso_nhood_topology);
+    if (pso_w_strategy == PSO_W_LIN_DEC)
+        printf ("\tweight min = %f, weight max = %f\n", pso_w_min, pso_w_max);
+    if (pso_nhood_topology_select == PSO_NHOOD_RANDOM)
+        printf("\tneighborhood size = %d\n", pso_nhood_size);
 
     /* Read occupancy map */
     int ** map = readMap (inFileHandlePtr, inHorizonY, inHorizonX);
@@ -329,6 +412,13 @@ int main (int argc, char **argv){
     pso_params->start[1] = robot->position_coords[1];
     pso_params->stop[0] = robot->target_coords[0];
     pso_params->stop[1] = robot->target_coords[1];
+    pso_params->c1 = pso_c1;
+    pso_params->c2 = pso_c2;
+    pso_params->w_strategy = pso_w_strategy;
+    pso_params->w_min = pso_w_min;
+    pso_params->w_max = pso_w_max;
+    pso_params->nhood_topology = pso_nhood_topology;
+    pso_params->nhood_size = pso_nhood_size;
     printEnv(pso_params->env);
 
     /* Init pso settings */
@@ -344,7 +434,7 @@ int main (int argc, char **argv){
     // Define objective function
     pso_obj_fun_t obj_fun = pso_path;
     // Set the problem specific settings
-    pso_set_path_settings(&settings, pso_params->env, robot, waypoints);
+    pso_set_path_settings(&settings, pso_params, pso_params->env, robot, waypoints);
 //settings.size = popSize;
 //settings.nhood_strategy = PSO_NHOOD_RING;
     settings.dim = waypoints * 2;
